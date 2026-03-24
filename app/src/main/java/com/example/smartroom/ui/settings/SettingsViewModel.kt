@@ -12,7 +12,9 @@ data class SettingsUiState(
     val temperatureMin: Float = 18f,
     val temperatureMax: Float = 28f,
     val humidityMin: Float = 35f,
-    val humidityMax: Float = 60f
+    val humidityMax: Float = 60f,
+    val feedbackMessage: String = "",
+    val isError: Boolean = false
 )
 
 // Connects LocalSettingsStore to Compose state so the UI can read and update settings.
@@ -44,33 +46,59 @@ class SettingsViewModel(
 
     // Updates only the IP text field value while the user is typing.
     fun onIpAddressChanged(newIpAddress: String) {
-        uiState = uiState.copy(ipAddress = newIpAddress)
+        uiState = uiState.copy(ipAddress = newIpAddress, feedbackMessage = "", isError = false)
     }
 
     // Updates only the minimum allowed temperature selected by the user.
     fun onTemperatureMinChanged(newTemperatureMin: Float) {
-        uiState = uiState.copy(temperatureMin = newTemperatureMin)
+        uiState =
+            uiState.copy(temperatureMin = newTemperatureMin, feedbackMessage = "", isError = false)
     }
 
     // Updates only the maximum allowed temperature selected by the user.
     fun onTemperatureMaxChanged(newTemperatureMax: Float) {
-        uiState = uiState.copy(temperatureMax = newTemperatureMax)
+        uiState =
+            uiState.copy(temperatureMax = newTemperatureMax, feedbackMessage = "", isError = false)
     }
 
     // Updates only the minimum allowed humidity selected by the user.
     fun onHumidityMinChanged(newHumidityMin: Float) {
-        uiState = uiState.copy(humidityMin = newHumidityMin)
+        uiState = uiState.copy(humidityMin = newHumidityMin, feedbackMessage = "", isError = false)
     }
 
     // Updates only the maximum allowed humidity selected by the user.
     fun onHumidityMaxChanged(newHumidityMax: Float) {
-        uiState = uiState.copy(humidityMax = newHumidityMax)
+        uiState = uiState.copy(humidityMax = newHumidityMax, feedbackMessage = "", isError = false)
+    }
+
+    // Checks if the user-entered settings are valid before saving.
+    private fun validateInputs(): String? {
+        if (uiState.ipAddress.isBlank()) {
+            return "Please enter the Raspberry Pi IP address."
+        }
+
+        if (uiState.temperatureMin > uiState.temperatureMax) {
+            return "Temperature min cannot be greater than max."
+        }
+
+        if (uiState.humidityMin > uiState.humidityMax) {
+            return "Humidity min cannot be greater than max."
+        }
+
+        return null
     }
 
     // Saves all editable settings in one place when the user taps Save.
     fun saveSettings() {
+        val validationError = validateInputs()
+        if (validationError != null) {
+            uiState = uiState.copy(feedbackMessage = validationError, isError = true)
+            return
+        }
+
         localSettingsStore.saveIpAddress(uiState.ipAddress)
         localSettingsStore.saveTemperatureRange(uiState.temperatureMin, uiState.temperatureMax)
         localSettingsStore.saveHumidityRange(uiState.humidityMin, uiState.humidityMax)
+        uiState = uiState.copy(feedbackMessage = "Settings saved successfully.", isError = false)
     }
 }

@@ -80,6 +80,21 @@ fun SettingsScreen(
         Button(onClick = onSaveClicked, modifier = Modifier.fillMaxWidth()) {
             Text("Save settings")
         }
+
+        // Shows validation errors or save success feedback to the user.
+        if (uiState.feedbackMessage.isNotBlank()) {
+            val feedbackColor = if (uiState.isError) {
+                MaterialTheme.colorScheme.error
+            } else {
+                MaterialTheme.colorScheme.primary
+            }
+
+            Text(
+                text = uiState.feedbackMessage,
+                color = feedbackColor,
+                style = MaterialTheme.typography.bodyMedium
+            )
+        }
     }
 }
 
