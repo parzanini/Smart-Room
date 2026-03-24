@@ -47,6 +47,26 @@ class SettingsViewModel(
         uiState = uiState.copy(ipAddress = newIpAddress)
     }
 
+    // Updates only the minimum allowed temperature selected by the user.
+    fun onTemperatureMinChanged(newTemperatureMin: Float) {
+        uiState = uiState.copy(temperatureMin = newTemperatureMin)
+    }
+
+    // Updates only the maximum allowed temperature selected by the user.
+    fun onTemperatureMaxChanged(newTemperatureMax: Float) {
+        uiState = uiState.copy(temperatureMax = newTemperatureMax)
+    }
+
+    // Updates only the minimum allowed humidity selected by the user.
+    fun onHumidityMinChanged(newHumidityMin: Float) {
+        uiState = uiState.copy(humidityMin = newHumidityMin)
+    }
+
+    // Updates only the maximum allowed humidity selected by the user.
+    fun onHumidityMaxChanged(newHumidityMax: Float) {
+        uiState = uiState.copy(humidityMax = newHumidityMax)
+    }
+
     // Saves all editable settings in one place when the user taps Save.
     fun saveSettings() {
         localSettingsStore.saveIpAddress(uiState.ipAddress)
@@ -54,4 +74,3 @@ class SettingsViewModel(
         localSettingsStore.saveHumidityRange(uiState.humidityMin, uiState.humidityMax)
     }
 }
-

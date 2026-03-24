@@ -4,44 +4,36 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.runtime.remember
+import com.example.smartroom.data.local.LocalSettingsStore
+import com.example.smartroom.ui.settings.SettingsScreen
+import com.example.smartroom.ui.settings.SettingsViewModel
 import com.example.smartroom.ui.theme.SmartRoomTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
         setContent {
+            // Creates the local storage object once for this composition.
+            val localSettingsStore = remember { LocalSettingsStore(applicationContext) }
+
+            // Creates a simple ViewModel instance that manages Settings screen state.
+            val settingsViewModel = remember { SettingsViewModel(localSettingsStore) }
+
             SmartRoomTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
-                    )
-                }
+                // Shows the Settings screen and forwards all UI events to the ViewModel.
+                SettingsScreen(
+                    uiState = settingsViewModel.uiState,
+                    onIpAddressChanged = settingsViewModel::onIpAddressChanged,
+                    onTemperatureMinChanged = settingsViewModel::onTemperatureMinChanged,
+                    onTemperatureMaxChanged = settingsViewModel::onTemperatureMaxChanged,
+                    onHumidityMinChanged = settingsViewModel::onHumidityMinChanged,
+                    onHumidityMaxChanged = settingsViewModel::onHumidityMaxChanged,
+                    onSaveClicked = settingsViewModel::saveSettings
+                )
             }
         }
-    }
-}
-
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
-
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    SmartRoomTheme {
-        Greeting("Android")
     }
 }
