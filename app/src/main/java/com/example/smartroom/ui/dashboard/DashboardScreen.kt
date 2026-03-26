@@ -10,6 +10,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
@@ -18,8 +19,18 @@ import androidx.compose.ui.unit.dp
 fun DashboardScreen(
     uiState: DashboardUiState,
     onRefreshClicked: () -> Unit,
+    onStartPolling: () -> Unit,
+    onStopPolling: () -> Unit,
     onOpenSettingsClicked: () -> Unit
 ) {
+    // Starts polling while this Composable is on screen and stops it when leaving.
+    DisposableEffect(Unit) {
+        onStartPolling()
+        onDispose {
+            onStopPolling()
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()

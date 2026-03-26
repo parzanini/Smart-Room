@@ -8,6 +8,9 @@ import androidx.lifecycle.viewModelScope
 import com.example.smartroom.data.local.LocalSettingsStore
 import com.example.smartroom.data.model.CurrentDataResponse
 import com.example.smartroom.data.remote.RetrofitFactory
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 // Holds everything the Dashboard screen needs to render sensor state.
@@ -26,12 +29,22 @@ class DashboardViewModel(
     var uiState by mutableStateOf(DashboardUiState())
         private set
 
+    // Holds the repeating polling coroutine while Dashboard is visible.
+    private var pollingJob: Job? = null
+
     init {
         loadCurrentData()
     }
 
     // Requests the latest temperature and humidity values from /api/current.
     fun loadCurrentData() {
+        viewModelScope.launch {
+            requestCurrentData()
+        }
+    }
+
+    // Performs one network request cycle and updates loading, success, and error states.
+    private suspend fun requestCurrentData() {
         val savedIpAddress = localSettingsStore.getIpAddress()
 
         if (savedIpAddress.isBlank()) {
@@ -44,18 +57,41 @@ class DashboardViewModel(
 
         uiState = uiState.copy(isLoading = true, errorMessage = "")
 
-        viewModelScope.launch {
-            try {
-                val apiService = RetrofitFactory.createApiService(savedIpAddress)
-                val response = apiService.getCurrentData()
-                uiState = uiState.copy(currentData = response, isLoading = false)
-            } catch (_: Exception) {
-                uiState = uiState.copy(
-                    isLoading = false,
-                    errorMessage = "Failed to read sensor data. Check IP or Wi-Fi connection."
-                )
+        try {
+            val apiService = RetrofitFactory.createApiService(savedIpAddress)
+            val response = apiService.getCurrentData()
+            uiState = uiState.copy(currentData = response, isLoading = false)
+        } catch (_: Exception) {
+            uiState = uiState.copy(
+                isLoading = false,
+                errorMessage = "Failed to read sensor data. Check IP or Wi-Fi connection."
+            )
+        }
+    }
+
+    // Starts repeated GET /api/current requests while the Dashboard screen is open.
+    fun startPolling(intervalMillis: Long = 5000L) {
+        if (pollingJob?.isActive == true) {
+            return
+        }
+
+        pollingJob = viewModelScope.launch {
+            while (isActive) {
+                requestCurrentData()
+                delay(intervalMillis)
             }
         }
+    }
+
+    // Stops the polling loop when the Dashboard screen is closed.
+    fun stopPolling() {
+        pollingJob?.cancel()
+        pollingJob = null
+    }
+
+    override fun onCleared() {
+        stopPolling()
+        super.onCleared()
     }
 }
 

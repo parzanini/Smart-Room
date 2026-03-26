@@ -58,6 +58,8 @@ class MainActivity : ComponentActivity() {
                     DashboardScreen(
                         uiState = dashboardViewModel.uiState,
                         onRefreshClicked = dashboardViewModel::loadCurrentData,
+                        onStartPolling = dashboardViewModel::startPolling,
+                        onStopPolling = dashboardViewModel::stopPolling,
                         onOpenSettingsClicked = { showSettingsScreen = true }
                     )
                 }
