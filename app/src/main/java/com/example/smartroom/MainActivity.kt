@@ -60,6 +60,7 @@ class MainActivity : ComponentActivity() {
                         onRefreshClicked = dashboardViewModel::loadCurrentData,
                         onStartPolling = dashboardViewModel::startPolling,
                         onStopPolling = dashboardViewModel::stopPolling,
+                        onFanToggleClicked = dashboardViewModel::toggleFan,
                         onOpenSettingsClicked = { showSettingsScreen = true }
                     )
                 }

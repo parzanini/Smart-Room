@@ -21,6 +21,7 @@ fun DashboardScreen(
     onRefreshClicked: () -> Unit,
     onStartPolling: () -> Unit,
     onStopPolling: () -> Unit,
+    onFanToggleClicked: () -> Unit,
     onOpenSettingsClicked: () -> Unit
 ) {
     // Starts polling while this Composable is on screen and stops it when leaving.
@@ -56,6 +57,21 @@ fun DashboardScreen(
 
         Button(onClick = onRefreshClicked, modifier = Modifier.fillMaxWidth()) {
             Text("Refresh")
+        }
+
+        // Sends a fan ON/OFF command to the backend actuator endpoint.
+        Button(
+            onClick = onFanToggleClicked,
+            enabled = !uiState.isUpdatingActuator,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            val fanButtonLabel = if (uiState.isFanOn) "Turn fan off" else "Turn fan on"
+            Text(fanButtonLabel)
+        }
+
+        // Shows backend response or actuator update errors.
+        if (uiState.actuatorMessage.isNotBlank()) {
+            Text(text = uiState.actuatorMessage)
         }
 
         Button(onClick = onOpenSettingsClicked, modifier = Modifier.fillMaxWidth()) {
