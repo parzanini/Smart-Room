@@ -26,7 +26,8 @@ data class DashboardUiState(
 
 // Fetches current sensor data from the Raspberry Pi using the saved IP address.
 class DashboardViewModel(
-    private val localSettingsStore: LocalSettingsStore
+    private val localSettingsStore: LocalSettingsStore,
+    private val onOutOfRangeDetected: (String) -> Unit = {}
 ) : ViewModel() {
 
     // Compose observes this state and updates the Dashboard automatically.
@@ -35,6 +36,9 @@ class DashboardViewModel(
 
     // Holds the repeating polling coroutine while Dashboard is visible.
     private var pollingJob: Job? = null
+
+    // Prevents repeated notifications while values stay continuously outside limits.
+    private var hasActiveRangeAlert = false
 
     init {
         loadCurrentData()
@@ -65,12 +69,44 @@ class DashboardViewModel(
             val apiService = RetrofitFactory.createApiService(savedIpAddress)
             val response = apiService.getCurrentData()
             uiState = uiState.copy(currentData = response, isLoading = false)
+            checkSafeRanges(response)
         } catch (_: Exception) {
             uiState = uiState.copy(
                 isLoading = false,
                 errorMessage = "Failed to read sensor data. Check IP or Wi-Fi connection."
             )
         }
+    }
+
+    // Compares the latest values with saved ranges and emits an alert message if needed.
+    private fun checkSafeRanges(currentData: CurrentDataResponse) {
+        val temperatureRange = localSettingsStore.getTemperatureRange()
+        val humidityRange = localSettingsStore.getHumidityRange()
+
+        val isTemperatureOutside =
+            currentData.temperature < temperatureRange.first || currentData.temperature > temperatureRange.second
+        val isHumidityOutside =
+            currentData.humidity < humidityRange.first || currentData.humidity > humidityRange.second
+
+        if (!isTemperatureOutside && !isHumidityOutside) {
+            hasActiveRangeAlert = false
+            return
+        }
+
+        if (hasActiveRangeAlert) {
+            return
+        }
+
+        val warningParts = mutableListOf<String>()
+        if (isTemperatureOutside) {
+            warningParts.add("temperature ${currentData.temperature} C")
+        }
+        if (isHumidityOutside) {
+            warningParts.add("humidity ${currentData.humidity}%")
+        }
+
+        onOutOfRangeDetected("Out of safe range: ${warningParts.joinToString(" and ")}")
+        hasActiveRangeAlert = true
     }
 
     // Starts repeated GET /api/current requests while the Dashboard screen is open.
