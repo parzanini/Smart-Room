@@ -22,6 +22,7 @@ fun DashboardScreen(
     onStartPolling: () -> Unit,
     onStopPolling: () -> Unit,
     onFanToggleClicked: () -> Unit,
+    onOpenHistoryClicked: () -> Unit,
     onOpenSettingsClicked: () -> Unit
 ) {
     // Starts polling while this Composable is on screen and stops it when leaving.
@@ -72,6 +73,10 @@ fun DashboardScreen(
         // Shows backend response or actuator update errors.
         if (uiState.actuatorMessage.isNotBlank()) {
             Text(text = uiState.actuatorMessage)
+        }
+
+        Button(onClick = onOpenHistoryClicked, modifier = Modifier.fillMaxWidth()) {
+            Text("Open history")
         }
 
         Button(onClick = onOpenSettingsClicked, modifier = Modifier.fillMaxWidth()) {

@@ -17,9 +17,17 @@ import com.example.smartroom.data.local.LocalSettingsStore
 import com.example.smartroom.notifications.NotificationHelper
 import com.example.smartroom.ui.dashboard.DashboardScreen
 import com.example.smartroom.ui.dashboard.DashboardViewModel
+import com.example.smartroom.ui.history.HistoricalScreen
+import com.example.smartroom.ui.history.HistoricalViewModel
 import com.example.smartroom.ui.settings.SettingsScreen
 import com.example.smartroom.ui.settings.SettingsViewModel
 import com.example.smartroom.ui.theme.SmartRoomTheme
+
+private enum class AppScreen {
+    SETTINGS,
+    DASHBOARD,
+    HISTORY
+}
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -51,40 +59,65 @@ class MainActivity : ComponentActivity() {
                 )
             }
 
+            // Creates the History ViewModel that reads /api/data records.
+            val historicalViewModel = remember { HistoricalViewModel(localSettingsStore) }
+
             // Opens Settings first if there is no saved IP address yet.
-            var showSettingsScreen by remember {
-                mutableStateOf(settingsViewModel.uiState.ipAddress.isBlank())
+            var currentScreen by remember {
+                mutableStateOf(
+                    if (settingsViewModel.uiState.ipAddress.isBlank()) {
+                        AppScreen.SETTINGS
+                    } else {
+                        AppScreen.DASHBOARD
+                    }
+                )
             }
 
             SmartRoomTheme(darkTheme = settingsViewModel.uiState.isDarkModeEnabled) {
-                if (showSettingsScreen) {
-                    // Shows the Settings screen and forwards all UI events to the ViewModel.
-                    SettingsScreen(
-                        uiState = settingsViewModel.uiState,
-                        onIpAddressChanged = settingsViewModel::onIpAddressChanged,
-                        onTemperatureMinChanged = settingsViewModel::onTemperatureMinChanged,
-                        onTemperatureMaxChanged = settingsViewModel::onTemperatureMaxChanged,
-                        onHumidityMinChanged = settingsViewModel::onHumidityMinChanged,
-                        onHumidityMaxChanged = settingsViewModel::onHumidityMaxChanged,
-                        onDarkModeToggled = settingsViewModel::onDarkModeToggled,
-                        onSaveClicked = {
-                            settingsViewModel.saveSettings()
-                            if (!settingsViewModel.uiState.isError) {
-                                showSettingsScreen = false
-                                dashboardViewModel.loadCurrentData()
+                when (currentScreen) {
+                    AppScreen.SETTINGS -> {
+                        // Shows the Settings screen and forwards all UI events to the ViewModel.
+                        SettingsScreen(
+                            uiState = settingsViewModel.uiState,
+                            onIpAddressChanged = settingsViewModel::onIpAddressChanged,
+                            onTemperatureMinChanged = settingsViewModel::onTemperatureMinChanged,
+                            onTemperatureMaxChanged = settingsViewModel::onTemperatureMaxChanged,
+                            onHumidityMinChanged = settingsViewModel::onHumidityMinChanged,
+                            onHumidityMaxChanged = settingsViewModel::onHumidityMaxChanged,
+                            onDarkModeToggled = settingsViewModel::onDarkModeToggled,
+                            onSaveClicked = {
+                                settingsViewModel.saveSettings()
+                                if (!settingsViewModel.uiState.isError) {
+                                    currentScreen = AppScreen.DASHBOARD
+                                    dashboardViewModel.loadCurrentData()
+                                }
                             }
-                        }
-                    )
-                } else {
-                    // Shows live sensor values and allows users to refresh or reopen Settings.
-                    DashboardScreen(
-                        uiState = dashboardViewModel.uiState,
-                        onRefreshClicked = dashboardViewModel::loadCurrentData,
-                        onStartPolling = dashboardViewModel::startPolling,
-                        onStopPolling = dashboardViewModel::stopPolling,
-                        onFanToggleClicked = dashboardViewModel::toggleFan,
-                        onOpenSettingsClicked = { showSettingsScreen = true }
-                    )
+                        )
+                    }
+
+                    AppScreen.DASHBOARD -> {
+                        // Shows live sensor values and allows users to refresh or open other screens.
+                        DashboardScreen(
+                            uiState = dashboardViewModel.uiState,
+                            onRefreshClicked = dashboardViewModel::loadCurrentData,
+                            onStartPolling = dashboardViewModel::startPolling,
+                            onStopPolling = dashboardViewModel::stopPolling,
+                            onFanToggleClicked = dashboardViewModel::toggleFan,
+                            onOpenHistoryClicked = { currentScreen = AppScreen.HISTORY },
+                            onOpenSettingsClicked = { currentScreen = AppScreen.SETTINGS }
+                        )
+                    }
+
+                    AppScreen.HISTORY -> {
+                        // Shows historical query fields and loaded values from /api/data.
+                        HistoricalScreen(
+                            uiState = historicalViewModel.uiState,
+                            onStartDateTimeChanged = historicalViewModel::onStartDateTimeChanged,
+                            onEndDateTimeChanged = historicalViewModel::onEndDateTimeChanged,
+                            onLoadHistoryClicked = historicalViewModel::loadHistoricalData,
+                            onBackClicked = { currentScreen = AppScreen.DASHBOARD }
+                        )
+                    }
                 }
             }
         }
