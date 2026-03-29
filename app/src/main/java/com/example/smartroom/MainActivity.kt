@@ -56,7 +56,7 @@ class MainActivity : ComponentActivity() {
                 mutableStateOf(settingsViewModel.uiState.ipAddress.isBlank())
             }
 
-            SmartRoomTheme {
+            SmartRoomTheme(darkTheme = settingsViewModel.uiState.isDarkModeEnabled) {
                 if (showSettingsScreen) {
                     // Shows the Settings screen and forwards all UI events to the ViewModel.
                     SettingsScreen(
@@ -66,6 +66,7 @@ class MainActivity : ComponentActivity() {
                         onTemperatureMaxChanged = settingsViewModel::onTemperatureMaxChanged,
                         onHumidityMinChanged = settingsViewModel::onHumidityMinChanged,
                         onHumidityMaxChanged = settingsViewModel::onHumidityMaxChanged,
+                        onDarkModeToggled = settingsViewModel::onDarkModeToggled,
                         onSaveClicked = {
                             settingsViewModel.saveSettings()
                             if (!settingsViewModel.uiState.isError) {

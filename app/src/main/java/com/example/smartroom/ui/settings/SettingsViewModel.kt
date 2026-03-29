@@ -13,6 +13,7 @@ data class SettingsUiState(
     val temperatureMax: Float = 28f,
     val humidityMin: Float = 35f,
     val humidityMax: Float = 60f,
+    val isDarkModeEnabled: Boolean = false,
     val feedbackMessage: String = "",
     val isError: Boolean = false
 )
@@ -40,7 +41,8 @@ class SettingsViewModel(
             temperatureMin = savedTemperatureRange.first,
             temperatureMax = savedTemperatureRange.second,
             humidityMin = savedHumidityRange.first,
-            humidityMax = savedHumidityRange.second
+            humidityMax = savedHumidityRange.second,
+            isDarkModeEnabled = localSettingsStore.isDarkModeEnabled()
         )
     }
 
@@ -71,6 +73,15 @@ class SettingsViewModel(
         uiState = uiState.copy(humidityMax = newHumidityMax, feedbackMessage = "", isError = false)
     }
 
+    // Updates the theme toggle state chosen by the user.
+    fun onDarkModeToggled(isDarkModeEnabled: Boolean) {
+        uiState = uiState.copy(
+            isDarkModeEnabled = isDarkModeEnabled,
+            feedbackMessage = "",
+            isError = false
+        )
+    }
+
     // Checks if the user-entered settings are valid before saving.
     private fun validateInputs(): String? {
         if (uiState.ipAddress.isBlank()) {
@@ -99,6 +110,7 @@ class SettingsViewModel(
         localSettingsStore.saveIpAddress(uiState.ipAddress)
         localSettingsStore.saveTemperatureRange(uiState.temperatureMin, uiState.temperatureMax)
         localSettingsStore.saveHumidityRange(uiState.humidityMin, uiState.humidityMax)
+        localSettingsStore.saveDarkModeEnabled(uiState.isDarkModeEnabled)
         uiState = uiState.copy(feedbackMessage = "Settings saved successfully.", isError = false)
     }
 }

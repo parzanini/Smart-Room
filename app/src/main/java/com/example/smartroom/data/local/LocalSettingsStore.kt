@@ -49,6 +49,16 @@ class LocalSettingsStore(context: Context) {
         return Pair(min, max)
     }
 
+    // Saves whether the app should use dark mode or light mode.
+    fun saveDarkModeEnabled(isDarkModeEnabled: Boolean) {
+        preferences.edit().putBoolean(KEY_DARK_MODE_ENABLED, isDarkModeEnabled).apply()
+    }
+
+    // Returns the stored theme preference. Default is light mode for beginners.
+    fun isDarkModeEnabled(): Boolean {
+        return preferences.getBoolean(KEY_DARK_MODE_ENABLED, false)
+    }
+
     companion object {
         private const val PREFERENCES_NAME = "smart_room_settings"
         private const val KEY_IP_ADDRESS = "ip_address"
@@ -56,6 +66,7 @@ class LocalSettingsStore(context: Context) {
         private const val KEY_TEMP_MAX = "temp_max"
         private const val KEY_HUMIDITY_MIN = "humidity_min"
         private const val KEY_HUMIDITY_MAX = "humidity_max"
+        private const val KEY_DARK_MODE_ENABLED = "dark_mode_enabled"
     }
 }
 
