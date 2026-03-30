@@ -7,6 +7,9 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -62,20 +65,49 @@ class MainActivity : ComponentActivity() {
             // Creates the History ViewModel that reads /api/data records.
             val historicalViewModel = remember { HistoricalViewModel(localSettingsStore) }
 
-            // Opens Settings first if there is no saved IP address yet.
+            // Uses persisted storage directly so startup screen is stable after app restarts.
+            val hasSavedIpAddress = remember {
+                localSettingsStore.getIpAddress().isNotBlank()
+            }
+
+            // Opens Settings first only when no IP was saved yet.
             var currentScreen by remember {
                 mutableStateOf(
-                    if (settingsViewModel.uiState.ipAddress.isBlank()) {
-                        AppScreen.SETTINGS
-                    } else {
+                    if (hasSavedIpAddress) {
                         AppScreen.DASHBOARD
+                    } else {
+                        AppScreen.SETTINGS
                     }
                 )
+            }
+
+            // Shows a one-time onboarding message when required settings are still missing.
+            var showSettingsRequiredDialog by remember {
+                mutableStateOf(!hasSavedIpAddress)
             }
 
             SmartRoomTheme(darkTheme = settingsViewModel.uiState.isDarkModeEnabled) {
                 when (currentScreen) {
                     AppScreen.SETTINGS -> {
+                        if (showSettingsRequiredDialog) {
+                            AlertDialog(
+                                onDismissRequest = { },
+                                title = {
+                                    Text("Complete settings first")
+                                },
+                                text = {
+                                    Text(
+                                        "To use Smart Room, please enter your Raspberry Pi IP and save your settings first."
+                                    )
+                                },
+                                confirmButton = {
+                                    TextButton(onClick = { showSettingsRequiredDialog = false }) {
+                                        Text("Understood")
+                                    }
+                                }
+                            )
+                        }
+
                         // Shows the Settings screen and forwards all UI events to the ViewModel.
                         SettingsScreen(
                             uiState = settingsViewModel.uiState,
