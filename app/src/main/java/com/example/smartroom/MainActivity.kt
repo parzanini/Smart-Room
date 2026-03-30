@@ -7,13 +7,18 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.example.smartroom.data.local.LocalSettingsStore
@@ -81,74 +86,126 @@ class MainActivity : ComponentActivity() {
                 )
             }
 
+            // Marks when setup is finished so Dashboard and History tabs can be opened.
+            var hasCompletedSetup by remember { mutableStateOf(hasSavedIpAddress) }
+
             // Shows a one-time onboarding message when required settings are still missing.
             var showSettingsRequiredDialog by remember {
                 mutableStateOf(!hasSavedIpAddress)
             }
 
-            SmartRoomTheme(darkTheme = settingsViewModel.uiState.isDarkModeEnabled) {
-                when (currentScreen) {
-                    AppScreen.SETTINGS -> {
-                        if (showSettingsRequiredDialog) {
-                            AlertDialog(
-                                onDismissRequest = { },
-                                title = {
-                                    Text("Complete settings first")
+            SmartRoomTheme(
+                darkTheme = settingsViewModel.uiState.isDarkModeEnabled,
+                dynamicColor = false
+            ) {
+                Scaffold(
+                    bottomBar = {
+                        NavigationBar {
+                            NavigationBarItem(
+                                selected = currentScreen == AppScreen.DASHBOARD,
+                                onClick = {
+                                    if (hasCompletedSetup) {
+                                        currentScreen = AppScreen.DASHBOARD
+                                    } else {
+                                        currentScreen = AppScreen.SETTINGS
+                                        showSettingsRequiredDialog = true
+                                    }
                                 },
-                                text = {
-                                    Text(
-                                        "To use Smart Room, please enter your Raspberry Pi IP and save your settings first."
-                                    )
+                                icon = { Text("D") },
+                                label = { Text("Dashboard") },
+                                enabled = hasCompletedSetup
+                            )
+
+                            NavigationBarItem(
+                                selected = currentScreen == AppScreen.HISTORY,
+                                onClick = {
+                                    if (hasCompletedSetup) {
+                                        currentScreen = AppScreen.HISTORY
+                                    } else {
+                                        currentScreen = AppScreen.SETTINGS
+                                        showSettingsRequiredDialog = true
+                                    }
                                 },
-                                confirmButton = {
-                                    TextButton(onClick = { showSettingsRequiredDialog = false }) {
-                                        Text("Understood")
+                                icon = { Text("H") },
+                                label = { Text("History") },
+                                enabled = hasCompletedSetup
+                            )
+
+                            NavigationBarItem(
+                                selected = currentScreen == AppScreen.SETTINGS,
+                                onClick = { currentScreen = AppScreen.SETTINGS },
+                                icon = { Text("S") },
+                                label = { Text("Settings") }
+                            )
+                        }
+                    }
+                ) { innerPadding ->
+                    when (currentScreen) {
+                        AppScreen.SETTINGS -> {
+                            if (showSettingsRequiredDialog) {
+                                AlertDialog(
+                                    onDismissRequest = { },
+                                    title = {
+                                        Text("Complete settings first")
+                                    },
+                                    text = {
+                                        Text(
+                                            "To use Smart Room, please enter your Raspberry Pi IP and save your settings first."
+                                        )
+                                    },
+                                    confirmButton = {
+                                        TextButton(onClick = {
+                                            showSettingsRequiredDialog = false
+                                        }) {
+                                            Text("Understood")
+                                        }
+                                    }
+                                )
+                            }
+
+                            // Shows the Settings screen and forwards all UI events to the ViewModel.
+                            SettingsScreen(
+                                modifier = Modifier.padding(innerPadding),
+                                uiState = settingsViewModel.uiState,
+                                onIpAddressChanged = settingsViewModel::onIpAddressChanged,
+                                onTemperatureMinChanged = settingsViewModel::onTemperatureMinChanged,
+                                onTemperatureMaxChanged = settingsViewModel::onTemperatureMaxChanged,
+                                onHumidityMinChanged = settingsViewModel::onHumidityMinChanged,
+                                onHumidityMaxChanged = settingsViewModel::onHumidityMaxChanged,
+                                onDarkModeToggled = settingsViewModel::onDarkModeToggled,
+                                onSaveClicked = {
+                                    settingsViewModel.saveSettings()
+                                    if (!settingsViewModel.uiState.isError) {
+                                        hasCompletedSetup = true
+                                        currentScreen = AppScreen.DASHBOARD
+                                        dashboardViewModel.loadCurrentData()
                                     }
                                 }
                             )
                         }
 
-                        // Shows the Settings screen and forwards all UI events to the ViewModel.
-                        SettingsScreen(
-                            uiState = settingsViewModel.uiState,
-                            onIpAddressChanged = settingsViewModel::onIpAddressChanged,
-                            onTemperatureMinChanged = settingsViewModel::onTemperatureMinChanged,
-                            onTemperatureMaxChanged = settingsViewModel::onTemperatureMaxChanged,
-                            onHumidityMinChanged = settingsViewModel::onHumidityMinChanged,
-                            onHumidityMaxChanged = settingsViewModel::onHumidityMaxChanged,
-                            onDarkModeToggled = settingsViewModel::onDarkModeToggled,
-                            onSaveClicked = {
-                                settingsViewModel.saveSettings()
-                                if (!settingsViewModel.uiState.isError) {
-                                    currentScreen = AppScreen.DASHBOARD
-                                    dashboardViewModel.loadCurrentData()
-                                }
-                            }
-                        )
-                    }
+                        AppScreen.DASHBOARD -> {
+                            // Shows live sensor values and allows users to refresh data.
+                            DashboardScreen(
+                                modifier = Modifier.padding(innerPadding),
+                                uiState = dashboardViewModel.uiState,
+                                onRefreshClicked = dashboardViewModel::loadCurrentData,
+                                onStartPolling = dashboardViewModel::startPolling,
+                                onStopPolling = dashboardViewModel::stopPolling,
+                                onFanToggleClicked = dashboardViewModel::toggleFan
+                            )
+                        }
 
-                    AppScreen.DASHBOARD -> {
-                        // Shows live sensor values and allows users to refresh or open other screens.
-                        DashboardScreen(
-                            uiState = dashboardViewModel.uiState,
-                            onRefreshClicked = dashboardViewModel::loadCurrentData,
-                            onStartPolling = dashboardViewModel::startPolling,
-                            onStopPolling = dashboardViewModel::stopPolling,
-                            onFanToggleClicked = dashboardViewModel::toggleFan,
-                            onOpenHistoryClicked = { currentScreen = AppScreen.HISTORY },
-                            onOpenSettingsClicked = { currentScreen = AppScreen.SETTINGS }
-                        )
-                    }
-
-                    AppScreen.HISTORY -> {
-                        // Shows historical query fields and loaded values from /api/data.
-                        HistoricalScreen(
-                            uiState = historicalViewModel.uiState,
-                            onStartDateTimeChanged = historicalViewModel::onStartDateTimeChanged,
-                            onEndDateTimeChanged = historicalViewModel::onEndDateTimeChanged,
-                            onLoadHistoryClicked = historicalViewModel::loadHistoricalData,
-                            onBackClicked = { currentScreen = AppScreen.DASHBOARD }
-                        )
+                        AppScreen.HISTORY -> {
+                            // Shows historical query fields and loaded values from /api/data.
+                            HistoricalScreen(
+                                modifier = Modifier.padding(innerPadding),
+                                uiState = historicalViewModel.uiState,
+                                onStartDateTimeChanged = historicalViewModel::onStartDateTimeChanged,
+                                onEndDateTimeChanged = historicalViewModel::onEndDateTimeChanged,
+                                onLoadHistoryClicked = historicalViewModel::loadHistoricalData
+                            )
+                        }
                     }
                 }
             }

@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 // Draws all local app settings that the user can change and save.
 @Composable
 fun SettingsScreen(
+    modifier: Modifier = Modifier,
     uiState: SettingsUiState,
     onIpAddressChanged: (String) -> Unit,
     onTemperatureMinChanged: (Float) -> Unit,
@@ -33,7 +34,7 @@ fun SettingsScreen(
     onSaveClicked: () -> Unit
 ) {
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)

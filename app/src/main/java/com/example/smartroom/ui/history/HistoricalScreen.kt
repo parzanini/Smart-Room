@@ -19,14 +19,14 @@ import androidx.compose.ui.unit.dp
 // Displays historical sensor records returned by GET /api/data.
 @Composable
 fun HistoricalScreen(
+    modifier: Modifier = Modifier,
     uiState: HistoricalUiState,
     onStartDateTimeChanged: (String) -> Unit,
     onEndDateTimeChanged: (String) -> Unit,
-    onLoadHistoryClicked: () -> Unit,
-    onBackClicked: () -> Unit
+    onLoadHistoryClicked: () -> Unit
 ) {
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
             .padding(16.dp)
             .verticalScroll(rememberScrollState()),
@@ -69,9 +69,6 @@ fun HistoricalScreen(
             Text(text = "-------------------------")
         }
 
-        Button(onClick = onBackClicked, modifier = Modifier.fillMaxWidth()) {
-            Text("Back to dashboard")
-        }
     }
 }
 
