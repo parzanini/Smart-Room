@@ -201,8 +201,8 @@ class MainActivity : ComponentActivity() {
                             HistoricalScreen(
                                 modifier = Modifier.padding(innerPadding),
                                 uiState = historicalViewModel.uiState,
-                                onStartDateTimeChanged = historicalViewModel::onStartDateTimeChanged,
-                                onEndDateTimeChanged = historicalViewModel::onEndDateTimeChanged,
+                                onStartDateSelected = historicalViewModel::onStartDateSelected,
+                                onEndDateSelected = historicalViewModel::onEndDateSelected,
                                 onLoadHistoryClicked = historicalViewModel::loadHistoricalData
                             )
                         }

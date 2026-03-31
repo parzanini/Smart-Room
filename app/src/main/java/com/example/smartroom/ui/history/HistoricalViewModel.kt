@@ -9,11 +9,17 @@ import com.example.smartroom.data.local.LocalSettingsStore
 import com.example.smartroom.data.model.CurrentDataResponse
 import com.example.smartroom.data.remote.RetrofitFactory
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.TimeZone
 
 // Holds all values rendered and edited on the History screen.
 data class HistoricalUiState(
-    val startDateTime: String = "",
-    val endDateTime: String = "",
+    val startDateMillis: Long? = null,
+    val endDateMillis: Long? = null,
+    val startDateLabel: String = "",
+    val endDateLabel: String = "",
     val historicalData: List<CurrentDataResponse> = emptyList(),
     val isLoading: Boolean = false,
     val errorMessage: String = ""
@@ -28,14 +34,22 @@ class HistoricalViewModel(
     var uiState by mutableStateOf(HistoricalUiState())
         private set
 
-    // Updates the start datetime text field while the user types.
-    fun onStartDateTimeChanged(newStartDateTime: String) {
-        uiState = uiState.copy(startDateTime = newStartDateTime, errorMessage = "")
+    // Updates the selected start date from the calendar picker.
+    fun onStartDateSelected(newStartDateMillis: Long?) {
+        uiState = uiState.copy(
+            startDateMillis = newStartDateMillis,
+            startDateLabel = formatDateLabel(newStartDateMillis),
+            errorMessage = ""
+        )
     }
 
-    // Updates the end datetime text field while the user types.
-    fun onEndDateTimeChanged(newEndDateTime: String) {
-        uiState = uiState.copy(endDateTime = newEndDateTime, errorMessage = "")
+    // Updates the selected end date from the calendar picker.
+    fun onEndDateSelected(newEndDateMillis: Long?) {
+        uiState = uiState.copy(
+            endDateMillis = newEndDateMillis,
+            endDateLabel = formatDateLabel(newEndDateMillis),
+            errorMessage = ""
+        )
     }
 
     // Calls the backend endpoint and stores the returned historical entries.
@@ -47,8 +61,16 @@ class HistoricalViewModel(
             return
         }
 
-        if (uiState.startDateTime.isBlank() || uiState.endDateTime.isBlank()) {
-            uiState = uiState.copy(errorMessage = "Enter both start and end datetime values.")
+        val selectedStartDateMillis = uiState.startDateMillis
+        val selectedEndDateMillis = uiState.endDateMillis
+
+        if (selectedStartDateMillis == null || selectedEndDateMillis == null) {
+            uiState = uiState.copy(errorMessage = "Select both start and end dates.")
+            return
+        }
+
+        if (selectedStartDateMillis > selectedEndDateMillis) {
+            uiState = uiState.copy(errorMessage = "Start date cannot be after end date.")
             return
         }
 
@@ -56,20 +78,43 @@ class HistoricalViewModel(
 
         viewModelScope.launch {
             try {
+                val startQuery = toRangeStartIso(selectedStartDateMillis)
+                val endQuery = toRangeEndIso(selectedEndDateMillis)
                 val apiService = RetrofitFactory.createApiService(savedIpAddress)
                 val response = apiService.getHistoricalData(
-                    start = uiState.startDateTime,
-                    end = uiState.endDateTime
+                    start = startQuery,
+                    end = endQuery
                 )
 
                 uiState = uiState.copy(historicalData = response, isLoading = false)
             } catch (_: Exception) {
                 uiState = uiState.copy(
                     isLoading = false,
-                    errorMessage = "Failed to load history. Check datetime format, IP, or Wi-Fi."
+                    errorMessage = "Failed to load history. Check selected dates, IP, or Wi-Fi."
                 )
             }
         }
+    }
+
+    // Formats calendar milliseconds into a short date label for the UI.
+    private fun formatDateLabel(dateMillis: Long?): String {
+        if (dateMillis == null) {
+            return ""
+        }
+
+        val formatter = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+        formatter.timeZone = TimeZone.getTimeZone("UTC")
+        return formatter.format(Date(dateMillis))
+    }
+
+    // Converts a selected date to the first second of the day in UTC.
+    private fun toRangeStartIso(dateMillis: Long): String {
+        return "${formatDateLabel(dateMillis)}T00:00:00Z"
+    }
+
+    // Converts a selected date to the last second of the day in UTC.
+    private fun toRangeEndIso(dateMillis: Long): String {
+        return "${formatDateLabel(dateMillis)}T23:59:59Z"
     }
 }
 
