@@ -8,7 +8,12 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
@@ -21,6 +26,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.smartroom.data.local.LocalSettingsStore
 import com.example.smartroom.notifications.NotificationHelper
 import com.example.smartroom.ui.dashboard.DashboardScreen
@@ -51,24 +57,40 @@ class MainActivity : ComponentActivity() {
             // Creates the local storage object once for this composition.
             val localSettingsStore = remember { LocalSettingsStore(applicationContext) }
 
-            // Creates a simple ViewModel instance that manages Settings screen state.
-            val settingsViewModel = remember { SettingsViewModel(localSettingsStore) }
+            // Uses the standard ViewModel factory to ensure lifecycle persistence.
+            val settingsViewModel: SettingsViewModel = viewModel(
+                factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+                    override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                        return SettingsViewModel(localSettingsStore) as T
+                    }
+                }
+            )
 
             // Creates the Dashboard ViewModel that reads current sensor data.
-            val dashboardViewModel = remember {
-                DashboardViewModel(
-                    localSettingsStore = localSettingsStore,
-                    onOutOfRangeDetected = { alertMessage ->
-                        NotificationHelper.showOutOfRangeNotification(
-                            context = applicationContext,
-                            message = alertMessage
-                        )
+            val dashboardViewModel: DashboardViewModel = viewModel(
+                factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+                    override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                        return DashboardViewModel(
+                            localSettingsStore = localSettingsStore,
+                            onOutOfRangeDetected = { alertMessage ->
+                                NotificationHelper.showOutOfRangeNotification(
+                                    context = applicationContext,
+                                    message = alertMessage
+                                )
+                            }
+                        ) as T
                     }
-                )
-            }
+                }
+            )
 
             // Creates the History ViewModel that reads /api/data records.
-            val historicalViewModel = remember { HistoricalViewModel(localSettingsStore) }
+            val historicalViewModel: HistoricalViewModel = viewModel(
+                factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+                    override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                        return HistoricalViewModel(localSettingsStore) as T
+                    }
+                }
+            )
 
             // Uses persisted storage directly so startup screen is stable after app restarts.
             val hasSavedIpAddress = remember {
@@ -111,7 +133,7 @@ class MainActivity : ComponentActivity() {
                                         showSettingsRequiredDialog = true
                                     }
                                 },
-                                icon = { Text("D") },
+                                icon = { Icon(Icons.Default.Home, contentDescription = null) },
                                 label = { Text("Dashboard") },
                                 enabled = hasCompletedSetup
                             )
@@ -126,7 +148,7 @@ class MainActivity : ComponentActivity() {
                                         showSettingsRequiredDialog = true
                                     }
                                 },
-                                icon = { Text("H") },
+                                icon = { Icon(Icons.Default.DateRange, contentDescription = null) },
                                 label = { Text("History") },
                                 enabled = hasCompletedSetup
                             )
@@ -134,7 +156,7 @@ class MainActivity : ComponentActivity() {
                             NavigationBarItem(
                                 selected = currentScreen == AppScreen.SETTINGS,
                                 onClick = { currentScreen = AppScreen.SETTINGS },
-                                icon = { Text("S") },
+                                icon = { Icon(Icons.Default.Settings, contentDescription = null) },
                                 label = { Text("Settings") }
                             )
                         }
