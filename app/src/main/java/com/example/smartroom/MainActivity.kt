@@ -44,8 +44,14 @@ private enum class AppScreen {
 }
 
 class MainActivity : ComponentActivity() {
+
+    // Moves the store to the class level to ensure it's created once for the activity.
+    private lateinit var localSettingsStore: LocalSettingsStore
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        localSettingsStore = LocalSettingsStore(applicationContext)
 
         // Prepares notifications and asks permission on Android 13+.
         NotificationHelper.createNotificationChannel(this)
@@ -54,9 +60,6 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         setContent {
-            // Creates the local storage object once for this composition.
-            val localSettingsStore = remember { LocalSettingsStore(applicationContext) }
-
             // Uses the standard ViewModel factory to ensure lifecycle persistence.
             val settingsViewModel: SettingsViewModel = viewModel(
                 factory = object : androidx.lifecycle.ViewModelProvider.Factory {
@@ -66,7 +69,6 @@ class MainActivity : ComponentActivity() {
                 }
             )
 
-            // Creates the Dashboard ViewModel that reads current sensor data.
             val dashboardViewModel: DashboardViewModel = viewModel(
                 factory = object : androidx.lifecycle.ViewModelProvider.Factory {
                     override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
@@ -83,7 +85,6 @@ class MainActivity : ComponentActivity() {
                 }
             )
 
-            // Creates the History ViewModel that reads /api/data records.
             val historicalViewModel: HistoricalViewModel = viewModel(
                 factory = object : androidx.lifecycle.ViewModelProvider.Factory {
                     override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
@@ -92,28 +93,21 @@ class MainActivity : ComponentActivity() {
                 }
             )
 
-            // Uses persisted storage directly so startup screen is stable after app restarts.
-            val hasSavedIpAddress = remember {
-                localSettingsStore.getIpAddress().isNotBlank()
+            // Re-evaluates setup status whenever the IP address changes in the store.
+            var hasCompletedSetup by remember {
+                mutableStateOf(localSettingsStore.getIpAddress().isNotBlank()) 
             }
 
             // Opens Settings first only when no IP was saved yet.
             var currentScreen by remember {
                 mutableStateOf(
-                    if (hasSavedIpAddress) {
-                        AppScreen.DASHBOARD
-                    } else {
-                        AppScreen.SETTINGS
-                    }
+                    if (hasCompletedSetup) AppScreen.DASHBOARD else AppScreen.SETTINGS
                 )
             }
 
-            // Marks when setup is finished so Dashboard and History tabs can be opened.
-            var hasCompletedSetup by remember { mutableStateOf(hasSavedIpAddress) }
-
             // Shows a one-time onboarding message when required settings are still missing.
             var showSettingsRequiredDialog by remember {
-                mutableStateOf(!hasSavedIpAddress)
+                mutableStateOf(!hasCompletedSetup)
             }
 
             SmartRoomTheme(
@@ -167,13 +161,9 @@ class MainActivity : ComponentActivity() {
                             if (showSettingsRequiredDialog) {
                                 AlertDialog(
                                     onDismissRequest = { },
-                                    title = {
-                                        Text("Complete settings first")
-                                    },
+                                    title = { Text("Complete settings first") },
                                     text = {
-                                        Text(
-                                            "To use Smart Room, please enter your Raspberry Pi IP and save your settings first."
-                                        )
+                                        Text("To use Smart Room, please enter your Raspberry Pi IP and save your settings first.")
                                     },
                                     confirmButton = {
                                         TextButton(onClick = {
@@ -185,7 +175,6 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
 
-                            // Shows the Settings screen and forwards all UI events to the ViewModel.
                             SettingsScreen(
                                 modifier = Modifier.padding(innerPadding),
                                 uiState = settingsViewModel.uiState,
@@ -207,7 +196,6 @@ class MainActivity : ComponentActivity() {
                         }
 
                         AppScreen.DASHBOARD -> {
-                            // Shows live sensor values and allows users to refresh data.
                             DashboardScreen(
                                 modifier = Modifier.padding(innerPadding),
                                 uiState = dashboardViewModel.uiState,
@@ -219,7 +207,6 @@ class MainActivity : ComponentActivity() {
                         }
 
                         AppScreen.HISTORY -> {
-                            // Shows historical query fields and loaded values from /api/data.
                             HistoricalScreen(
                                 modifier = Modifier.padding(innerPadding),
                                 uiState = historicalViewModel.uiState,
@@ -234,22 +221,16 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    // Requests POST_NOTIFICATIONS only on Android 13+, where it is required at runtime.
     private fun requestNotificationPermissionIfNeeded() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
-            return
-        }
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
 
         val permissionStatus = ContextCompat.checkSelfPermission(
-            this,
-            Manifest.permission.POST_NOTIFICATIONS
+            this, Manifest.permission.POST_NOTIFICATIONS
         )
 
         if (permissionStatus != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(
-                this,
-                arrayOf(Manifest.permission.POST_NOTIFICATIONS),
-                100
+                this, arrayOf(Manifest.permission.POST_NOTIFICATIONS), 100
             )
         }
     }

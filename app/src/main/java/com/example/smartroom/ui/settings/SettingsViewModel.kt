@@ -107,10 +107,16 @@ class SettingsViewModel(
             return
         }
 
-        localSettingsStore.saveIpAddress(uiState.ipAddress)
-        localSettingsStore.saveTemperatureRange(uiState.temperatureMin, uiState.temperatureMax)
-        localSettingsStore.saveHumidityRange(uiState.humidityMin, uiState.humidityMax)
-        localSettingsStore.saveDarkModeEnabled(uiState.isDarkModeEnabled)
+        // Uses the consolidated save method to ensure all fields are written to disk.
+        localSettingsStore.saveAllSettings(
+            ipAddress = uiState.ipAddress,
+            tempMin = uiState.temperatureMin,
+            tempMax = uiState.temperatureMax,
+            humidityMin = uiState.humidityMin,
+            humidityMax = uiState.humidityMax,
+            isDarkMode = uiState.isDarkModeEnabled
+        )
+
         uiState = uiState.copy(feedbackMessage = "Settings saved successfully.", isError = false)
     }
 }
