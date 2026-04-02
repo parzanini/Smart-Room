@@ -1,5 +1,6 @@
 package com.example.smartroom.ui.dashboard
 
+import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -71,10 +72,8 @@ class DashboardViewModel(
             uiState = uiState.copy(currentData = response, isLoading = false)
             checkSafeRanges(response)
         } catch (_: Exception) {
-            uiState = uiState.copy(
-                isLoading = false,
-                errorMessage = "Failed to read sensor data. Check IP or Wi-Fi connection."
-            )
+            Log.d("DashboardViewModel", "Error loading current data")
+
         }
     }
 

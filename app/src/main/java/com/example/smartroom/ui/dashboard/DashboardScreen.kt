@@ -100,14 +100,6 @@ fun DashboardScreen(
                 )
             }
 
-            if (uiState.currentData != null) {
-                Text(
-                    text = "Last updated: ${uiState.currentData.timestamp}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.outline
-                )
-            }
-
             Spacer(modifier = Modifier.weight(1f))
 
             // Shows a centered circular action for fan control.
