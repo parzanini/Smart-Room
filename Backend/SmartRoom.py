@@ -45,20 +45,13 @@ def save_reading():
     try:
         # Create a database cursor to execute SQL commands
         with conn.cursor() as cur:
-            # Execute an INSERT query to save the sensor data
             cur.execute(
-                """
-                INSERT INTO sensor_readings (temperature, humidity)
-                VALUES (%s, %s)
-                """,
-                (temperature, humidity)  # Pass the sensor values safely into the query
+                "INSERT INTO sensor_readings (temperature, humidity) VALUES (%s, %s)",
+                (temperature, humidity)
             )
-            # Store the ID of the newly inserted row
             reading_id = cur.lastrowid
 
-        # Create another cursor to fetch the inserted reading back
         with conn.cursor() as cur:
-            # Execute a SELECT query to retrieve the reading and format its timestamp
             cur.execute(
                 """
                 SELECT id, temperature, humidity,
@@ -107,8 +100,8 @@ def get_data():
     start = request.args.get("start")
     # Read optional end timestamp from the query parameters
     end = request.args.get("end")
-    
-    # Open DB connection
+    limit = int(request.args.get("limit", 1000)) # Default to 1000 for better history
+
     conn = get_connection()
     try:
         # Open cursor
@@ -132,14 +125,19 @@ def get_data():
                 # Add the parsed strings to parameters list
                 params.extend([start_str, end_str])
                 
-            # Finish query by sorting newest first and limiting to 100 rows
-            query += " ORDER BY created_at DESC, id DESC LIMIT 100"
+            query += f" ORDER BY created_at DESC, id DESC LIMIT {limit}"
             
             # Execute the constructed query with the parameters safely bound
             cur.execute(query, tuple(params))
             # Fetch all matching rows
             rows = cur.fetchall()
-            # Return the list of dictionaries as a JSON array
+
+            # If too many points, sample them (e.g., 100 points max for the UI)
+            # This keeps the chart clean regardless of the timeframe.
+            if len(rows) > 200:
+                step = len(rows) // 100
+                rows = rows[::step]
+
             return jsonify(rows)
     finally:
         # Close connection
@@ -154,13 +152,13 @@ def manage_actuator():
     device = data.get("device", "unknown")
     # Extract the desired state (True/False) from the JSON
     state = data.get("state", False)
-    
+
     # Convert boolean state to "on" or "off" string
     state_str = "on" if state else "off"
-    
+
     # Simulate turning the fan/heater on or off by printing to server logs
     print(f"*** ACTUATOR TRIGGERED: {device} turned {state_str.upper()} ***")
-    
+
     # Return a JSON object indicating success to the client
     return jsonify({
         "status": "success",
