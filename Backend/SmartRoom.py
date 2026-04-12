@@ -146,24 +146,39 @@ def get_data():
 # 3. ACTUATOR CONTROL (Used by the Android Fan Toggle button)
 @app.route("/api/actuator", methods=["POST"])  # Define a POST route for remote control
 def manage_actuator():
-    # Parse the incoming JSON body, default to empty dict if None
-    data = request.get_json() or {}
-    # Extract the target device name from the JSON
-    device = data.get("device", "unknown")
-    # Extract the desired state (True/False) from the JSON
-    state = data.get("state", False)
+    try:
+        # Parse the incoming JSON body
+        data = request.get_json() or {}
+        device = data.get("device", "unknown")
 
-    # Convert boolean state to "on" or "off" string
-    state_str = "on" if state else "off"
+        # Explicitly handle state as boolean, even if it comes as string or int
+        state_raw = data.get("state", False)
+        if isinstance(state_raw, str):
+            state = state_raw.lower() in ["true", "1", "on"]
+        else:
+            state = bool(state_raw)
 
-    # Simulate turning the fan/heater on or off by printing to server logs
-    print(f"*** ACTUATOR TRIGGERED: {device} turned {state_str.upper()} ***")
+        # Determine message and color
+        state_txt = "ON" if state else "OFF"
+        # Colors: Blue (0, 0, 255) for ON, Red (255, 0, 0) for OFF
+        color = (0, 0, 255) if state else (255, 0, 0)
 
-    # Return a JSON object indicating success to the client
-    return jsonify({
-        "status": "success",
-        "message": f"{device.capitalize()} turned {state_str}"
-    })
+        print(f"DEBUG: Actuator '{device}' toggle. New state: {state_txt}")
+
+        # 1. Scroll the text "ON" or "OFF"
+        # We use white text on the target background color for visibility
+        sense.show_message(state_txt, text_colour=(255, 255, 255), back_colour=(0, 0, 0), scroll_speed=0.05)
+
+        # 2. Fill the whole screen with the state color (Blue or Red)
+        sense.clear(color)
+
+        return jsonify({
+            "status": "success",
+            "message": f"{device.capitalize()} turned {state_txt.lower()}"
+        })
+    except Exception as e:
+        print(f"ERROR in manage_actuator: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 def background_capture():
     # Infinite loop to keep capturing data continuously
@@ -178,7 +193,8 @@ def background_capture():
         time.sleep(CAPTURE_INTERVAL)
 
 if __name__ == "__main__":
-    # If file is run directly, start the background capture task in a separate daemon thread
+    # Start the background capture task in a separate daemon thread
     threading.Thread(target=background_capture, daemon=True).start()
-    # Start the Flask web server on all network interfaces, port 5000, without debug mode
+    # Start the Flask web server on all network interfaces
     app.run(host="0.0.0.0", port=5000, debug=False)
+
